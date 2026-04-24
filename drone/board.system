@@ -1,26 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Microkit system description for milestone 1.
+  Microkit system description, milestone 2.
 
-  Two protection domains exchange notifications over a single channel.
-  This is the skeleton that later milestones will extend: `pinger` becomes
-  the IMU driver, `ponger` becomes the estimator, and further PDs
-  (flight_ctrl, geofence, motor_driver, mavlink_radio) are added with
-  channels that encode the trust boundaries.
+  Two PDs exchange IMU samples over a shared-memory ring protected by
+  a seqlock. Both PDs carry MCS attributes (period/budget in
+  microseconds) so their CPU consumption is bounded — the same
+  mechanism that will cap the untrusted mavlink_radio PD in later
+  milestones.
 -->
 <system>
 
-    <protection_domain name="pinger" priority="100">
-        <program_image path="pinger.elf" />
+    <!-- 4 KiB of shared memory: a seq counter plus a 16-slot ring. -->
+    <memory_region name="imu_shm" size="0x1000" />
+
+    <protection_domain name="imu_driver" priority="200" period="1000" budget="100">
+        <program_image path="imu_driver.elf" />
+        <map mr="imu_shm" vaddr="0x2_000_000" perms="rw" cached="true"
+             setvar_vaddr="imu_shm" />
     </protection_domain>
 
-    <protection_domain name="ponger" priority="99">
-        <program_image path="ponger.elf" />
+    <protection_domain name="estimator" priority="199" period="1000" budget="300">
+        <program_image path="estimator.elf" />
+        <!-- Read-only mapping: estimator cannot corrupt the IMU ring. -->
+        <map mr="imu_shm" vaddr="0x2_000_000" perms="r" cached="true"
+             setvar_vaddr="imu_shm" />
     </protection_domain>
 
     <channel>
-        <end pd="pinger" id="0" />
-        <end pd="ponger" id="0" />
+        <end pd="imu_driver" id="0" />
+        <end pd="estimator"  id="0" />
     </channel>
 
 </system>

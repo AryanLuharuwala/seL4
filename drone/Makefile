@@ -31,7 +31,7 @@ CFLAGS := -mcpu=cortex-a53 -mstrict-align -ffreestanding -g3 -O2 \
 LDFLAGS := -L$(BOARD_DIR)/lib
 LIBS    := -lmicrokit -Tmicrokit.ld
 
-PDS       := pinger ponger
+PDS       := imu_driver estimator
 ELFS      := $(PDS:%=$(BUILD_DIR)/%.elf)
 IMAGE     := $(BUILD_DIR)/drone.img
 REPORT    := $(BUILD_DIR)/report.txt
